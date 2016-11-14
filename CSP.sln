@@ -7,12 +7,30 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CSP", "CSP.vcxproj", "{32E5
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug Example DFS|x64 = Debug Example DFS|x64
+		Debug Example DFS|x86 = Debug Example DFS|x86
+		Debug Example|x64 = Debug Example|x64
+		Debug Example|x86 = Debug Example|x86
+		Debug Simple|x64 = Debug Simple|x64
+		Debug Simple|x86 = Debug Simple|x86
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Example DFS|x64.ActiveCfg = Debug Example DFS|x64
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Example DFS|x64.Build.0 = Debug Example DFS|x64
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Example DFS|x86.ActiveCfg = Debug Example DFS|Win32
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Example DFS|x86.Build.0 = Debug Example DFS|Win32
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Example|x64.ActiveCfg = Debug Example|x64
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Example|x64.Build.0 = Debug Example|x64
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Example|x86.ActiveCfg = Debug Example|Win32
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Example|x86.Build.0 = Debug Example|Win32
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Simple|x64.ActiveCfg = Debug Simple|x64
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Simple|x64.Build.0 = Debug Simple|x64
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Simple|x86.ActiveCfg = Debug Simple|Win32
+		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug Simple|x86.Build.0 = Debug Simple|Win32
 		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug|x64.ActiveCfg = Debug|x64
 		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug|x64.Build.0 = Debug|x64
 		{32E54F02-2744-4FCD-81A7-1812863CFBB7}.Debug|x86.ActiveCfg = Debug|Win32

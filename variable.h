@@ -38,7 +38,8 @@
 #include <set>
 #include <fstream>
 #include <string>
-
+#include <iostream>
+#include <algorithm>
 
 class VariableException : public std::exception {
 	std::string msg;
@@ -71,8 +72,26 @@ class Variable {
 		//! unique ID (not used)
 		unsigned id;
 
+
 	public:
-		Variable ( const std::string & name, const std::vector<Value> & av );
+		Variable(const std::string & name, const std::vector<Value> & av):
+			name(name),
+			domain(av.begin(), av.end()),
+			assigned_value(Value()),
+			is_assigned(false),
+			id(++nextid) {
+
+		}
+		friend std::ostream& operator<<(std::ostream& os, const Variable& v) {
+			std::set<Variable::Value>::const_iterator b = v.GetDomain().begin();
+			std::set<Variable::Value>::const_iterator e = v.GetDomain().end();
+			os << "Variable \"" << v.Name() << "\" available values: ";
+			for (;b != e;++b) { os << *b << " "; }
+			os << std::endl;
+			if (v.IsAssigned())
+				os << " \nassigned value " << v.GetValue() << std::endl;
+			return os;
+		}
 		const std::string & Name() const;
 		void  RemoveValue(Value val) throw (VariableException);
 		void  SetDomain(const std::set<Value>& vals);
@@ -87,16 +106,19 @@ class Variable {
 		Value GetMinValue() const throw (VariableException);
 		Value GetMaxValue() const throw (VariableException);
 		Value GetValue() const throw (VariableException);
-		void  Print() const;
+		void  Print() const {
+			std::cout << this;
+		}
 };
-
-std::ostream& operator<<(std::ostream& os, const Variable& v);
 
 #ifdef INLINE_VARIABLE
 	//#warning "INFO - inlining Variable methods"
 	#include "variable.inl"
 #endif
 
-#include "variable.cpp"
+#ifndef INLINE_VARIABLE
+	//#warning "INFO - NOT inlining Variable"
+#include "variable.inl"
+#endif
 
 #endif
