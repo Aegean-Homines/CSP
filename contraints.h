@@ -227,6 +227,7 @@ INLINE bool SumEqual<Variable, SUM>::Satisfiable() const {
 	typename std::vector<Variable*>::const_iterator e = this->vars.end();
 	typename Variable::Value min_sum = 0;
 	typename Variable::Value max_sum = 0;
+
 	for (; b != e; ++b) {
 		min_sum += (*b)->GetMinValue();
 		max_sum += (*b)->GetMaxValue();
@@ -294,7 +295,13 @@ INLINE bool AllDiff<Variable>::Satisfiable() const {
 		if ((*b)->IsAssigned()) {
 			++counter;
 			values.insert((*b)->GetValue());
-			if (counter != values.size()) return false; //if not equal - we have seen duplicates
+			if (counter != values.size()) {
+#ifdef DEBUG
+				std::cout << "AllDiff constraint is not satisfied for the value " << (*b)->GetValue() << std::endl;
+#endif
+				return false; //if not equal - we have seen duplicates
+			}
+			
 		}
 	}
 	return true;

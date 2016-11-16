@@ -107,9 +107,13 @@ class Variable {
 		Value GetMaxValue() const throw (VariableException);
 		Value GetValue() const throw (VariableException);
 		void  Print() const {
-			std::cout << this;
+			std::cout << *this;
 		}
 };
+
+#ifndef _WIN32
+unsigned Variable::nextid = 0;
+#endif
 
 #ifdef INLINE_VARIABLE
 	//#warning "INFO - inlining Variable methods"

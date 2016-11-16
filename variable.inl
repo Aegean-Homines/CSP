@@ -21,6 +21,9 @@ INLINE void Variable::RemoveValue(Value val) throw (VariableException) {
 	std::set<Value>::iterator it = domain.find(val);
 	if ( it != domain.end() ) {
 		domain.erase(it);
+#ifdef DEBUG
+		std::cout << "For variable " << name << " the value of " << val << " is removed!" << std::endl;
+#endif
 	}
 	else {
 		throw VariableException("Variable::RemoveValue - value is not in the domain");
@@ -137,6 +140,9 @@ INLINE void Variable::Assign()  throw (VariableException) {
 	if ( IsImpossible() ) throw VariableException("Variable::Assign() -- empty domain");
 	is_assigned = true;
 	assigned_value = *domain.begin();
+#ifdef DEBUG
+	std::cout << "For variable " << name << " the value of " << assigned_value << " is assigned!" << std::endl;
+#endif
 	return;
 }
 /******************************************************************************/
@@ -196,6 +202,9 @@ INLINE void Variable::UnAssign() throw (VariableException) {
 	if ( !is_assigned ) 
 		throw VariableException("Variable::UnAssign - already unassigned");
 	is_assigned = false; 
+#ifdef DEBUG 
+	std::cout << "For variable " << name << " the value of " << assigned_value << " is unassigned!" << std::endl;
+#endif
 }
 
 #undef INLINE

@@ -9,6 +9,14 @@
 #include <cstdlib>
 #include <ctime>
 
+#ifdef _WIN32
+#define QUEEN true
+#define FC true
+#ifndef SIZE
+#define SIZE 100
+#endif
+#endif
+
 
 ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
@@ -29,6 +37,12 @@ std::vector<int> getVector(int val, ...) {
 	return result;
 }
 
+
+#if (!EXAMPLE) && (!SIMPLE) && (!MSBC) && (!MS) && (!QUEEN)
+int main() {
+	std::cout << "RUNNING MODE IS NOT DEFINED!" << std::endl;
+}
+#endif
 
 #ifdef EXAMPLE
 int main () {
@@ -144,7 +158,7 @@ int main () {
 
 	cg.InsertConstraint(c1);
 	cg.InsertConstraint(c2);
-	//cg.Print();
+	cg.Print();
 	cg.PreProcess();
 
 	CSP<ConstraintGraph<Constraint<Variable> > > csp( cg );
@@ -171,8 +185,6 @@ int main () {
 	}
 }
 #endif
-
-
 
 #ifdef MSBC
 int main () try { //magic square SIZExSIZE
@@ -387,7 +399,9 @@ int main () try {//magic square SIZExSIZE
 		std::cout << std::endl;
 #endif
 	}
-	else std::cout << "No solution found\n";
+	else {
+		std::cout << "No solution found\n";
+	}
 
 	for (int i=0;i<NUM_CONSTRAINTS;++i) delete constraints[i];
 	for (int i=0;i<NUM_VARIABLES;++i) { delete variables[i]; }

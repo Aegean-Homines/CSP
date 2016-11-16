@@ -83,11 +83,27 @@ class CSP {
 		bool RemoveInconsistentValues(Variable* x,Variable* y,const Constraint* c);
 		//choose next variable for assignment
 		//choose the one with minimum remaining values
-		Variable* MinRemVal();
+		Variable* MinRemValByDomain();
+		Variable* MinRemValByConstraint();
+		Variable* FirstAvailable();
+
 		//choose next variable for assignment
 		//choose the one with max degree
 		Variable* MaxDegreeHeuristic();
 
+		// EGEMEN
+		// For debugging
+		void Print() const {
+			const std::vector<Variable*>& all_vars = cg.GetAllVariables();
+			typename std::vector<Variable*>::const_iterator b_vars = all_vars.begin();
+			typename std::vector<Variable*>::const_iterator e_vars = all_vars.end();
+			std::cout << "------------------------" << std::endl;
+			std::cout << "@@@@ SOLUTION FOUND @@@@" << std::endl;
+			for (; b_vars != e_vars; ++b_vars) {
+				(*b_vars)->Print();
+				std::cout << std::endl;
+			}
+		}
 
 		//data
 		//deque of arcs (2 Variables connected through a Constraint)
@@ -121,30 +137,91 @@ CSP<T>::CSP(T &cg) :
 //CSP solver, brute force - no forward checking
 template <typename T>
 bool CSP<T>::SolveDFS(unsigned level) {
-	/*++recursive_call_counter;
-	//std::cout << "entering SolveDFS (level " << level << ")\n";
+	++recursive_call_counter;
 
-
-
-
-
+	// This only happens when we call the solve for a non-existing level
+	// That is this recursion is called by the last variable assigned
+	// However, if all variables are assigned without a problem at this point
+	// Then we have the solution of the problem with the assigned values
+	if (cg.AllVariablesAssigned()) {
+		return true;
+	}
+#ifdef DEBUG
+	std::cout << "entering SolveDFS (level " << level << ")\n";
+#endif
+	Variable* var_to_assign = NULL;
 	//choose a variable by MRV
-	Variable* var_to_assign = MinRemVal();
 	//Variable* var_to_assign = MaxDegreeHeuristic();
+#ifndef FIRST_AVAILABLE
+	var_to_assign = MinRemValByDomain();
+#else
+	var_to_assign = FirstAvailable();
+
+	if (!var_to_assign) {
+		return false;
+	}
+#endif
+
+	// Get all the constraints that we need to satisfy
+	const std::vector<const Constraint*> & allConstraints = cg.GetConstraints(var_to_assign);
+	typename std::vector<const Constraint*>::const_iterator b_const = allConstraints.begin();
+	typename std::vector<const Constraint*>::const_iterator e_const = allConstraints.end();
+	// Get variables domain values (Save state)
+	const std::set<Value>& var_domain = var_to_assign->GetDomain();
+	typename std::set<Value> original_domain = var_domain;
 
 
+	// While the possible values of domain set is not empty
+	while (!var_to_assign->IsImpossible()) {
+		++iteration_counter;
 
+		// Assign the first element in the set to this variable
+		var_to_assign->Assign();
 
+		bool allSatisfiable = true;
 
-	loop( ... ) {
-	++iteration_counter;
+		// Reset the iterator for the next loop
+		b_const = allConstraints.begin();
+		// Does this assignment satisfy all constraints
+		for (; (b_const != e_const) && (allSatisfiable); ++b_const) {
+			allSatisfiable &= (*b_const)->Satisfiable();
+		}
 
+		if (!allSatisfiable) {
+			var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
+			var_to_assign->UnAssign();
+			continue;
+		}
+		else if (!SolveDFS(level + 1)) {
+			var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
+			var_to_assign->UnAssign();
+			continue;
+		}
+		else {
+#ifdef DEBUG
+			Print();
+#endif
+			return true;
+		}
 
+		//This should've worked as well, not different from whats going on at the above code snippet
+		/*if (!allSatisfiable || !SolveDFS(level + 1)) { //If this value doesn't break satisfiable condition and sub branches also work
+			var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
+			var_to_assign->UnAssign();
+		}
+		else {
+			Print(allVariables);
+			return true;
+		}*/
 
 	}
 
-	*/
-
+	if (level == 0) { // The first variable took all the values and its children checked all possible values
+		std::cout << "NO SOLUTION EXISTS!" << std::endl;
+	}
+	else { //Not first -> rollback domain state
+		var_to_assign->SetDomain(original_domain);
+	}
 	return false;
 
 }
@@ -154,23 +231,66 @@ bool CSP<T>::SolveDFS(unsigned level) {
 //CSP solver, uses forward checking
 template <typename T>
 bool CSP<T>::SolveFC(unsigned level) {
-	/*++recursive_call_counter;
-	//std::cout << "entering SolveFC (level " << level << ")\n";
+	++recursive_call_counter;
+#ifdef DEBUG
+	std::cout << "entering SolveFC (level " << level << ")\n";
+#endif
 
+	if (cg.AllVariablesAssigned()) {
+		return true;
+	}
 
+	Variable* var_to_assign = NULL;
 
-	//choose a variable by MRV
-	Variable* var_to_assign = MinRemVal();
-	//Variable* var_to_assign = MaxDegreeHeuristic();
+#ifndef FIRST_AVAILABLE
+	var_to_assign = MinRemValByDomain();
+#else
+	var_to_assign = FirstAvailable();
+	if (!var_to_assign) {
+		return false;
+	}
+#endif
+	// Get variables domain values (Save state)
+	const std::set<Value>& var_domain = var_to_assign->GetDomain();
+	typename std::set<Value> original_domain = var_domain;
 
+	// While the possible values of domain set is not empty
+	while (!var_to_assign->IsImpossible()) {
+		++iteration_counter;
 
+		// Assign the first element in the set to this variable
+		var_to_assign->Assign();
+		std::map< typename CSP<T>::Variable*, std::set<typename CSP<T>::Variable::Value> > savedState;
+		savedState = SaveState(var_to_assign); //save the current state
 
-	loop( ... ) {
-	++iteration_counter;
+		bool isImpossible = ForwardChecking(var_to_assign);
 
+		if (isImpossible) { // No solution with this variable
+			LoadState(savedState);
+			var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
+			var_to_assign->UnAssign();
+			continue;
+		}
+		else{ //It satisfies everything so I'll go deeper into the tree
+			if (!SolveFC(level + 1)) {
+				LoadState(savedState);
+				var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
+				var_to_assign->UnAssign();
+				continue;
+			}
+			else {
+#ifdef DEBUG
+				Print();
+#endif
+				return true;
+			}
+		}
+		
+	}
 
-
-	}*/
+	if (level == 0) { // The first variable took all the values and its children checked all possible values
+		std::cout << "NO SOLUTION EXISTS!" << std::endl;
+	}
 
 	return false;
 
@@ -179,13 +299,13 @@ bool CSP<T>::SolveFC(unsigned level) {
 //CSP solver, uses arc consistency
 template <typename T>
 bool CSP<T>::SolveARC(unsigned level) {
-	/*++recursive_call_counter;
-	//std::cout << "entering SolveARC (level " << level << ")\n";
+	++recursive_call_counter;
+	std::cout << "entering SolveARC (level " << level << ")\n";
 
 
 
 
-
+	/*
 	//choose a variable by MRV
 	Variable* var_to_assign = MinRemVal();
 
@@ -210,22 +330,58 @@ bool CSP<T>::SolveARC(unsigned level) {
 template <typename T>
 INLINE
 bool CSP<T>::ForwardChecking(Variable *x) {
+	// Get the neighbors of current variable
+	const std::set<Variable*> & neighbors = cg.GetNeighbors(x);
+	typename std::set<Variable*>::const_iterator b_neig = neighbors.begin();
+	typename std::set<Variable*>::const_iterator e_neig = neighbors.end();
+
+	while (b_neig != e_neig) {
+		Variable * currentNeighbor = *(b_neig++);
+		if (currentNeighbor->IsAssigned()) //pass assigned values
+			continue;
+
+		const std::set<const Constraint*> & connecting_constrains = cg.GetConnectingConstraints(x, currentNeighbor);
+		typename std::set<const Constraint*>::const_iterator b_const = connecting_constrains.begin();
+		typename std::set<const Constraint*>::const_iterator e_const = connecting_constrains.end();
+
+		const std::set<Value>& all_vals = currentNeighbor->GetDomain();
+		typename std::set<Value>::const_iterator b_vals = all_vals.begin();
+		typename std::set<Value>::const_iterator e_vals = all_vals.end();
+
+		while (b_vals != e_vals) {
+			Value currentValue = *(b_vals++);
+			currentNeighbor->Assign(currentValue);
+			b_const = connecting_constrains.begin();
+
+			while (b_const != e_const) {
+				Constraint const * currentConstraint = *(b_const++);
+
+				if (!currentConstraint->Satisfiable()) {
+					currentNeighbor->RemoveValue(currentNeighbor->GetValue());
+					currentNeighbor->UnAssign(); //This shouldn't be necessary but I don't wanna deal with possible bugs
+					if (currentNeighbor->SizeDomain() == 0) {
+						return true;
+					}
+					break;
+				}
+
+			}
+		}
+
+	
+		if(currentNeighbor->IsAssigned())
+			currentNeighbor->UnAssign();
+	}
 
 	return false;
-
-
 }
 ////////////////////////////////////////////////////////////
 //load states (available values) of all unassigned variables 
 template <typename T>
-void CSP<T>::LoadState(
-	std::map<Variable*,
-	std::set<typename CSP<T>::Variable::Value> >& saved) const
+void CSP<T>::LoadState(std::map<Variable*, std::set<typename CSP<T>::Variable::Value> >& saved) const
 {
-	typename std::map<Variable*, std::set<typename Variable::Value> >::iterator
-		b_result = saved.begin();
-	typename std::map<Variable*, std::set<typename Variable::Value> >::iterator
-		e_result = saved.end();
+	typename std::map<Variable*, std::set<typename Variable::Value> >::iterator b_result = saved.begin();
+	typename std::map<Variable*, std::set<typename Variable::Value> >::iterator e_result = saved.end();
 
 	for (; b_result != e_result; ++b_result) {
 		//std::cout << "loading state for " 
@@ -245,10 +401,8 @@ CSP<T>::SaveState(typename CSP<T>::Variable* x) const {
 	std::map<Variable*, std::set<typename Variable::Value> > result;
 
 	const std::vector<Variable*>& all_vars = cg.GetAllVariables();
-	typename std::vector<Variable*>::const_iterator
-		b_all_vars = all_vars.begin();
-	typename std::vector<Variable*>::const_iterator
-		e_all_vars = all_vars.end();
+	typename std::vector<Variable*>::const_iterator b_all_vars = all_vars.begin();
+	typename std::vector<Variable*>::const_iterator e_all_vars = all_vars.end();
 	for (; b_all_vars != e_all_vars; ++b_all_vars) {
 		if (!(*b_all_vars)->IsAssigned() && *b_all_vars != x) {
 			//std::cout << "saving state for " 
@@ -339,17 +493,68 @@ bool CSP<T>::RemoveInconsistentValues(Variable* x, Variable* y, const Constraint
 //choose the one with minimum remaining values
 template <typename T>
 INLINE
-typename CSP<T>::Variable* CSP<T>::MinRemVal() {
+typename CSP<T>::Variable* CSP<T>::MinRemValByDomain() {
+	// Get all the variables and loop through them
+	const std::vector<Variable*> & allVariables = cg.GetAllVariables();
+	typename std::vector<Variable*>::const_iterator b_vars = allVariables.begin();
+	typename std::vector<Variable*>::const_iterator e_vars = allVariables.end();
+	Variable* var_min = NULL;
+	unsigned int max_size = std::numeric_limits<unsigned int>::max();
 
-	return NULL;
-
-
-
-
-
-
+	for (; b_vars != e_vars; ++b_vars) {
+		Variable* var_temp = *b_vars;
+		const std::set<Value>& var_domain = var_temp->GetDomain();
+		// If the variable in question is not assigned and if it's domain is smaller than the last max we found pick that one
+		if (!var_temp->IsAssigned() && var_domain.size() < max_size) {
+			var_min = var_temp;
+		}
+	}
+	return var_min;
 
 }
+
+template <typename T>
+INLINE
+typename CSP<T>::Variable* CSP<T>::MinRemValByConstraint() {
+	// Get all the variables and loop through them
+	const std::vector<Variable*> & allVariables = cg.GetAllVariables();
+	typename std::vector<Variable*>::const_iterator b_vars = allVariables.begin();
+	typename std::vector<Variable*>::const_iterator e_vars = allVariables.end();
+	Variable* var_min = NULL;
+	unsigned int min_size = std::numeric_limits<unsigned int>::min();
+
+	for (; b_vars != e_vars; ++b_vars) {
+		Variable* var_temp = *b_vars;
+		const std::vector<const Constraint*> & allConstraints = cg.GetConstraints(var_temp);
+		// If the variable in question is not assigned and if it's domain is smaller than the last max we found pick that one
+		if (!var_temp->IsAssigned() && allConstraints.size() > min_size) {
+			var_min = var_temp;
+		}
+	}
+	return var_min;
+
+}
+
+template<typename T>
+INLINE
+typename CSP<T>::Variable* CSP<T>::FirstAvailable()
+{
+	const std::vector<Variable*> & allVariables = cg.GetAllVariables();
+	typename std::vector<Variable*>::const_iterator b_vars = allVariables.begin();
+	typename std::vector<Variable*>::const_iterator e_vars = allVariables.end();
+	Variable* var_to_assign = NULL;
+	// Get the first unassigned variable for this level
+	for (; b_vars != e_vars; ++b_vars) {
+		if (!(*b_vars)->IsAssigned()) {
+			var_to_assign = *b_vars;
+			break;
+		}
+	}
+
+	return var_to_assign;
+}
+
+
 ////////////////////////////////////////////////////////////
 //choose next variable for assignment
 //choose the one with max degree

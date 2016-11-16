@@ -79,19 +79,16 @@ class ConstraintGraph {
 		////////////////////////////////////////////////////////////
 		//set of Variables which are connected to a given Variable 
 		//by a constraint 
-		const typename std::set<Variable*>& 
-			GetNeighbors( Variable* p_var );
+		const typename std::set<Variable*> & GetNeighbors( Variable* p_var );
 		////////////////////////////////////////////////////////////
 		//all constraints that use the given variables
-		const typename std::vector<const Constraint*>& 
-			GetConstraints( Variable* p_var ) const throw (const char *);
+		const typename std::vector<const Constraint*> & GetConstraints( Variable* p_var ) const throw (const char *);
 		////////////////////////////////////////////////////////////
 		//vector of Constraints connecting 2 given Variables
-		const typename std::set<const Constraint*>& 
-			GetConnectingConstraints( Variable* p_var1, Variable* p_var2 );
+		const typename std::set<const Constraint*> & GetConnectingConstraints( Variable* p_var1, Variable* p_var2 );
 		////////////////////////////////////////////////////////////
 		//vector of all Variables
-		const typename std::vector<Variable*>& GetAllVariables( ) const;
+		const typename std::vector<Variable*> & GetAllVariables( ) const;
 
 		//checks
 		////////////////////////////////////////////////////////////
@@ -109,19 +106,21 @@ class ConstraintGraph {
 
 		//mapping from variable to constraints the variable is used in.
 		//that is constraints that depend on the variable
+		// (x, {1,2,3,4,5})
 		std::map<Variable*,std::vector<const Constraint*> > var2constr;
 		//all variables
 		std::vector<Variable*> vars;
 		//all constraints
 		std::vector<Constraint*> constraints;//mainly for print
+
 		//mapping from variable x to a set of variables Z
 		//each z in Z is connected to x by a constraint
 		//that is: there is a constraint that uses both variables x and z 
 		std::map<Variable*, std::set<Variable*> > neighbors;
+
 		//for each pair of variables all constraints that use both of them
 		//used in consistency checking
-		std::map< std::pair<Variable*,Variable*>, 
-			std::set<const Constraint*> > connecting_constraints;
+		std::map< std::pair<Variable*,Variable*>, std::set<const Constraint*> > connecting_constraints;
 		//for internal use only
 		std::map<std::string,Variable*> name2vars;
 };
@@ -175,28 +174,21 @@ void ConstraintGraph<T>::CheckActivity() {
 //build the above data-structures
 template <typename T>
 void ConstraintGraph<T>::PreProcess() {
-	typename std::vector<Variable*>::const_iterator
-		b_vars = vars.begin();
-	typename std::vector<Variable*>::const_iterator
-		e_vars = vars.end();
+	typename std::vector<Variable*>::const_iterator b_vars = vars.begin();
+	typename std::vector<Variable*>::const_iterator e_vars = vars.end();
 	for (;b_vars != e_vars;++b_vars) {
-		const std::vector<const Constraint*>&
-			constr = GetConstraints(*b_vars);
+		const std::vector<const Constraint*> & constr = GetConstraints(*b_vars);
 
 		//for all constraints current variable is used in
 		//find all other variables and put them in the set
 		//set ensures no duplicates
 		std::set<Variable*> neigh;
-		typename std::vector<const Constraint*>::const_iterator
-			b_constr = constr.begin();
-		typename std::vector<const Constraint*>::const_iterator
-			e_constr = constr.end();
+		typename std::vector<const Constraint*>::const_iterator b_constr = constr.begin();
+		typename std::vector<const Constraint*>::const_iterator e_constr = constr.end();
 
 		for (;b_constr != e_constr;++b_constr) {
-			typename std::vector< Variable*>::const_iterator
-				b_vars2 = (*b_constr)->GetVars().begin();
-			typename std::vector< Variable*>::const_iterator
-				e_vars2 = (*b_constr)->GetVars().end();
+			typename std::vector< Variable*>::const_iterator b_vars2 = (*b_constr)->GetVars().begin();
+			typename std::vector< Variable*>::const_iterator e_vars2 = (*b_constr)->GetVars().end();
 			for (;b_vars2 != e_vars2;++b_vars2) {
 				if (*b_vars2 != *b_vars)//excluding the given variable
 				{
@@ -243,9 +235,8 @@ ConstraintGraph<T>::GetConnectingConstraints(
 	typename ConstraintGraph<T>::Variable* p_var1,
 	typename ConstraintGraph<T>::Variable* p_var2)
 {
-	return connecting_constraints[
-		std::make_pair<Variable*, Variable*>(p_var1, p_var2)
-	];
+	std::pair<Variable*, Variable*> varPair(p_var1, p_var2);
+	return connecting_constraints[varPair];
 }
 ////////////////////////////////////////////////////////////
 //detect dead-end
@@ -269,7 +260,7 @@ void ConstraintGraph<T>::InsertVariable(typename ConstraintGraph<T>::Variable& v
 
 	vars.push_back(p_var);
 	name2vars[var.Name()] = p_var;
-	std::pair<Variable*, std::vector<const Constraint*>> pair(p_var, std::vector<const Constraint*>());
+	std::pair<Variable*, std::vector<const Constraint*> > pair(p_var, std::vector<const Constraint*>());
 	var2constr.insert(pair); //initially empty 
 
 							 //std::cout << __FILE__ << " " << __LINE__ << " var address " << p_var << std::endl;
@@ -283,16 +274,13 @@ void ConstraintGraph<T>::InsertConstraint(const Constraint & c) throw (const cha
 	//std::cout << "local constraint " << *p_c << std::endl;
 	const std::vector<Variable*> & vars_in_constraint = p_c->GetVars();
 	//check we know all variables
-	typename std::vector<Variable*>::const_iterator
-		b = vars_in_constraint.begin();
-	typename std::vector<Variable*>::const_iterator
-		e = vars_in_constraint.end();
+	typename std::vector<Variable*>::const_iterator b = vars_in_constraint.begin();
+	typename std::vector<Variable*>::const_iterator e = vars_in_constraint.end();
 
 	//insert constraint as an outgoing to all variables
 	//used in the constraint
 	for (;b != e;++b) {
-		typename std::map<std::string, Variable*>::iterator
-			it = name2vars.find((*b)->Name());
+		typename std::map<std::string, Variable*>::iterator it = name2vars.find((*b)->Name());
 		if (it == name2vars.end()) {
 			std::cout << "unknown variable name " << (*b)->Name() << std::endl;
 			throw "constraint uses unknown variable name";
@@ -310,8 +298,7 @@ ConstraintGraph<T>::GetConstraints(typename ConstraintGraph<T>::Variable* p_var)
 throw (const char *)
 {
 	typename
-		std::map< Variable*, std::vector<const Constraint*> >::
-		const_iterator it = var2constr.find(p_var);
+		std::map< Variable*, std::vector<const Constraint*> >::const_iterator it = var2constr.find(p_var);
 	if (it != var2constr.end()) return it->second;
 	else throw "cannot find variable in the graph";
 }

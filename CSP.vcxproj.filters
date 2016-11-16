@@ -45,4 +45,17 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="handout.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="out0">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="out1">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>
