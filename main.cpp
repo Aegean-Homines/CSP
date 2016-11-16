@@ -10,10 +10,10 @@
 #include <ctime>
 
 #ifdef _WIN32
-#define QUEEN true
+#define MS true
 #define FC true
 #ifndef SIZE
-#define SIZE 100
+#define SIZE 5
 #endif
 #endif
 

@@ -28,8 +28,10 @@ else
 CYGWIN=-Wl,--enable-auto-import
 endif
 
+.PHONY: run
+run: example simple exampleFA simpleFA queen-28-dfs queen-28-dfsFA queen-100-fc ms5-fc msbc5-fc msbc5-dfs ms6-fc msbc6-fc
 
-example:
+example: 
 	$(GCC) $(DRIVER0) -DEXAMPLE -DDFS $(CYGWIN) $(OBJECTS0) $(GCCFLAGS) $(DEFINE) -o $@.exe #ARC,DFS
 simple:
 	$(GCC) $(DRIVER0) -DSIMPLE -DDFS $(CYGWIN) $(OBJECTS0) $(GCCFLAGS) $(DEFINE) -o $@.exe #ARC,DFS
@@ -43,7 +45,7 @@ queen-28-dfs:
 queen-28-dfsFA:
 	$(GCC) $(DRIVER0) -DQUEEN -DSIZE=28 -DDFS -DFIRST_AVAILABLE $(CYGWIN) $(OBJECTS0) $(GCCFLAGS) $(DEFINE) -o $@.exe #ARC,DFS
 queen-100-fc:
-	$(GCC) $(DRIVER0) -DQUEEN -DSIZE=100 -DDEBUG -DFC $(CYGWIN) $(OBJECTS0) $(GCCFLAGS) $(DEFINE) -o $@.exe #ARC,DFS
+	$(GCC) $(DRIVER0) -DQUEEN -DSIZE=100 -DFC $(CYGWIN) $(OBJECTS0) $(GCCFLAGS) $(DEFINE) -o $@.exe #ARC,DFS
 queen-100-arc:
 	$(GCC) $(DRIVER0) -DQUEEN -DSIZE=100 -DARC $(CYGWIN) $(OBJECTS0) $(GCCFLAGS) $(DEFINE) -o $@.exe #ARC,DFS
 

@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <limits>
 #include <map>
+#include <ctime>
 
 template <typename C>
 struct Arc {
@@ -146,6 +147,8 @@ bool CSP<T>::SolveDFS(unsigned level) {
 	if (cg.AllVariablesAssigned()) {
 		return true;
 	}
+	
+
 #ifdef DEBUG
 	std::cout << "entering SolveDFS (level " << level << ")\n";
 #endif
@@ -153,6 +156,7 @@ bool CSP<T>::SolveDFS(unsigned level) {
 	//choose a variable by MRV
 	//Variable* var_to_assign = MaxDegreeHeuristic();
 #ifndef FIRST_AVAILABLE
+
 	var_to_assign = MinRemValByDomain();
 #else
 	var_to_assign = FirstAvailable();
@@ -250,6 +254,9 @@ bool CSP<T>::SolveFC(unsigned level) {
 		return false;
 	}
 #endif
+	const std::vector<const Constraint*> & allConstraints = cg.GetConstraints(var_to_assign);
+	typename std::vector<const Constraint*>::const_iterator b_const = allConstraints.begin();
+	typename std::vector<const Constraint*>::const_iterator e_const = allConstraints.end();
 	// Get variables domain values (Save state)
 	const std::set<Value>& var_domain = var_to_assign->GetDomain();
 	typename std::set<Value> original_domain = var_domain;
@@ -260,37 +267,63 @@ bool CSP<T>::SolveFC(unsigned level) {
 
 		// Assign the first element in the set to this variable
 		var_to_assign->Assign();
+
+		bool allSatisfiable = true;
+
+		// Reset the iterator for the next loop
+		b_const = allConstraints.begin();
+		// Does this assignment satisfy all constraints
+		for (; (b_const != e_const) && (allSatisfiable); ++b_const) {
+			allSatisfiable &= (*b_const)->Satisfiable();
+		}
+
+		if (!allSatisfiable) {
+			var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
+			var_to_assign->UnAssign();
+			continue;
+		}
+
 		std::map< typename CSP<T>::Variable*, std::set<typename CSP<T>::Variable::Value> > savedState;
 		savedState = SaveState(var_to_assign); //save the current state
 
 		bool isImpossible = ForwardChecking(var_to_assign);
 
-		if (isImpossible) { // No solution with this variable
+		if (!isImpossible && SolveFC(level + 1)) {
+			return true;
+		}
+		else {
 			LoadState(savedState);
 			var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
 			var_to_assign->UnAssign();
 			continue;
 		}
-		else{ //It satisfies everything so I'll go deeper into the tree
-			if (!SolveFC(level + 1)) {
-				LoadState(savedState);
-				var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
-				var_to_assign->UnAssign();
-				continue;
-			}
-			else {
-#ifdef DEBUG
-				Print();
-#endif
-				return true;
-			}
+
+		/*if (!isImpossible) { // No solution with this variable
+			LoadState(savedState);
+			var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
+			var_to_assign->UnAssign();
+			continue;
 		}
+		else if(!SolveFC(level + 1)) {
+			LoadState(savedState);
+			var_to_assign->RemoveValue(var_to_assign->GetValue()); //deletes from the original 
+			var_to_assign->UnAssign();
+			continue;
+		}
+		else {
+#ifdef DEBUG
+			Print();
+#endif
+			return true;
+		}*/
 		
 	}
 
 	if (level == 0) { // The first variable took all the values and its children checked all possible values
 		std::cout << "NO SOLUTION EXISTS!" << std::endl;
 	}
+
+	var_to_assign->SetDomain(original_domain);
 
 	return false;
 
@@ -340,26 +373,33 @@ bool CSP<T>::ForwardChecking(Variable *x) {
 		if (currentNeighbor->IsAssigned()) //pass assigned values
 			continue;
 
+		// Get all constraints between this and current neighbor
 		const std::set<const Constraint*> & connecting_constrains = cg.GetConnectingConstraints(x, currentNeighbor);
 		typename std::set<const Constraint*>::const_iterator b_const = connecting_constrains.begin();
 		typename std::set<const Constraint*>::const_iterator e_const = connecting_constrains.end();
 
+		// Get all the values of the neighbor
 		const std::set<Value>& all_vals = currentNeighbor->GetDomain();
 		typename std::set<Value>::const_iterator b_vals = all_vals.begin();
 		typename std::set<Value>::const_iterator e_vals = all_vals.end();
 
+		// Go through all the values
 		while (b_vals != e_vals) {
 			Value currentValue = *(b_vals++);
+			// Assign each value to the neighbor
 			currentNeighbor->Assign(currentValue);
 			b_const = connecting_constrains.begin();
 
+			// Loop through all the constraints for this value
 			while (b_const != e_const) {
 				Constraint const * currentConstraint = *(b_const++);
 
+				// Does this value satisfy the constraint
 				if (!currentConstraint->Satisfiable()) {
+					// If not remove the value and set neighbor to its unassigned state
 					currentNeighbor->RemoveValue(currentNeighbor->GetValue());
 					currentNeighbor->UnAssign(); //This shouldn't be necessary but I don't wanna deal with possible bugs
-					if (currentNeighbor->SizeDomain() == 0) {
+					if (currentNeighbor->SizeDomain() == 0) { //If that was the last value then everything is wrong
 						return true;
 					}
 					break;
@@ -368,10 +408,11 @@ bool CSP<T>::ForwardChecking(Variable *x) {
 			}
 		}
 
-	
-		if(currentNeighbor->IsAssigned())
+		if (currentNeighbor->IsAssigned())
 			currentNeighbor->UnAssign();
+
 	}
+
 
 	return false;
 }
@@ -507,6 +548,7 @@ typename CSP<T>::Variable* CSP<T>::MinRemValByDomain() {
 		// If the variable in question is not assigned and if it's domain is smaller than the last max we found pick that one
 		if (!var_temp->IsAssigned() && var_domain.size() < max_size) {
 			var_min = var_temp;
+			max_size = var_domain.size();
 		}
 	}
 	return var_min;
